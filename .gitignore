@@ -1,0 +1,9 @@
+/.gradle
+/build
+/.idea
+/buildSrc/.gradle
+/buildSrc/build
+/reference/base_mappings/methods.csv
+/reference/base_mappings/fields.csv
+/reference/base_mappings/params.csv
+/maven

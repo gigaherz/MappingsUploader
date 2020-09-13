@@ -1,0 +1,78 @@
+plugins {
+    id "de.undercouch.download" version "4.1.1"
+}
+apply plugin: 'maven-publish'
+apply plugin: dev.gigaherz.customartifacts.CustomArtifactsPlugin
+
+def timestamp = project.hasProperty("long_timestamp") && "true".equals(project.property("long_timestamp")) ?
+        new Date().format("yyyyMMdd-HHmmss").toString() : new Date().format("yyyyMMdd").toString()
+def mcversion = '1.16.2'
+
+group 'de.oceanlabs.mcp'
+version "${timestamp}-${mcversion}"
+
+System.out.println("mappings channel: 'snapshot', version: '${project.version}'")
+
+def archiveFileName = "mcp_snapshot-${version}.zip"
+
+def mappingsFile = file("$buildDir/${archiveFileName}")
+artifacts.add('mappingsExports', mappingsFile) {
+    type 'zip'
+    extension 'zip'
+}
+
+task downloadFile(type: Download) {
+    src 'https://docs.google.com/spreadsheet/ccc?key=14knNUYjYkKkGpW9VTyjtlhaCTUsPWRJ91GLOFX2d23Q&output=csv'
+    dest file("$buildDir/tmp/spreadsheet.csv")
+}
+
+task convertToCSV(type: dev.gigaherz.mappingdownloader.ConvertToCsvTask) {
+    dependsOn downloadFile
+    inputFile downloadFile.dest
+    destinationDir file("$buildDir/tmp/mappings/")
+}
+
+task mergeMappings(type: dev.gigaherz.mappingdownloader.MergeMappingsTask) {
+    dependsOn convertToCSV
+    dirs file('reference/base_mappings'), convertToCSV.destinationDir
+    if (file("reference/manual_overrides").exists())
+    {
+        dirs file("reference/manual_overrides")
+    }
+    destinationDir file("$buildDir/tmp/mergedmappings/")
+}
+
+task checkMappings(type: dev.gigaherz.mappingdownloader.CheckMappingsTask) {
+    dependsOn mergeMappings
+    checkDir mergeMappings.destinationDir
+}
+
+task makeSnapshot(type: Zip) {
+    dependsOn mergeMappings, checkMappings
+    from mergeMappings.destinationDir
+    include '*.csv'
+    archiveName archiveFileName
+    destinationDir buildDir
+}
+
+task build {
+    dependsOn makeSnapshot
+}
+
+tasks.publish.dependsOn makeSnapshot
+tasks.publishToMavenLocal.dependsOn makeSnapshot
+
+publishing {
+    publications {
+        mappings(MavenPublication) {
+            artifactId "mcp_snapshot"
+            from components.mappingsComponent
+        }
+    }
+
+    repositories {
+        maven {
+            url "$projectDir/maven"
+        }
+    }
+}
