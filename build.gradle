@@ -4,20 +4,27 @@ plugins {
 apply plugin: 'maven-publish'
 apply plugin: dev.gigaherz.customartifacts.CustomArtifactsPlugin
 
-def long_timestamp = true; // TRUE: debug snapshot, FALSE: daily "official" snapshot
+def timestampFormat
 
-def timestamp = new Date().format(long_timestamp ? "yyyyMMdd-HHmmss" : "yyyyMMdd").toString()
-def mcversion = '1.16.2'
+if (project.exportSnapshotType == 'debug') {
+	timestampFormat = 'yyyyMMdd-HHmmss'
+}
+else if (project.exportSnapshotType == 'official') {
+	timestampFormat = 'yyyyMMdd'
+}
+else {
+	throw InvalidUserDataException('snapshotType must be either "debug" or "official"')
+}
 
 group 'de.oceanlabs.mcp'
-version "${timestamp}-${mcversion}"
+version "${new Date().format(timestampFormat)}-${project.exportMinecraftVersion}"
 
 System.out.println("mappings channel: 'snapshot', version: '${project.version}'")
 
 def archiveFileName = "mcp_snapshot-${version}.zip"
+def archiveFile = file("$buildDir/${archiveFileName}")
 
-def mappingsFile = file("$buildDir/${archiveFileName}")
-artifacts.add('mappingsExports', mappingsFile) {
+artifacts.add('mappingsExports', archiveFile) {
     type 'zip'
     extension 'zip'
 }
@@ -46,7 +53,7 @@ task extractBaseMappings(type: Copy) {
 }
 
 task downloadSpreadsheet(type: Download) {
-    src 'https://docs.google.com/spreadsheet/ccc?key=14knNUYjYkKkGpW9VTyjtlhaCTUsPWRJ91GLOFX2d23Q&output=csv'
+    src "https://docs.google.com/spreadsheet/ccc?key=${project.spreadsheetKey}&output=csv"
     dest file("$buildDir/tmp/spreadsheet.csv")
 }
 
