@@ -4,8 +4,9 @@ plugins {
 apply plugin: 'maven-publish'
 apply plugin: dev.gigaherz.customartifacts.CustomArtifactsPlugin
 
-def timestamp = project.hasProperty("long_timestamp") && "true".equals(project.property("long_timestamp")) ?
-        new Date().format("yyyyMMdd-HHmmss").toString() : new Date().format("yyyyMMdd").toString()
+def long_timestamp = true; // TRUE: debug snapshot, FALSE: daily "official" snapshot
+
+def timestamp = new Date().format(long_timestamp ? "yyyyMMdd-HHmmss" : "yyyyMMdd").toString()
 def mcversion = '1.16.2'
 
 group 'de.oceanlabs.mcp'
@@ -29,7 +30,7 @@ task downloadFile(type: Download) {
 task convertToCSV(type: dev.gigaherz.mappingdownloader.ConvertToCsvTask) {
     dependsOn downloadFile
     inputFile downloadFile.dest
-    destinationDir file("$buildDir/tmp/mappings/")
+    destinationDir file("$buildDir/tmp/downloaded_mappings/")
 }
 
 task mergeMappings(type: dev.gigaherz.mappingdownloader.MergeMappingsTask) {
@@ -39,7 +40,7 @@ task mergeMappings(type: dev.gigaherz.mappingdownloader.MergeMappingsTask) {
     {
         dirs file("reference/manual_overrides")
     }
-    destinationDir file("$buildDir/tmp/mergedmappings/")
+    destinationDir file("$buildDir/tmp/merged_mappings/")
 }
 
 task checkMappings(type: dev.gigaherz.mappingdownloader.CheckMappingsTask) {
@@ -72,7 +73,7 @@ publishing {
 
     repositories {
         maven {
-            url "$projectDir/maven"
+            url "$projectDir/../../CommonMaven"
         }
     }
 }
