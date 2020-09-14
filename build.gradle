@@ -69,6 +69,8 @@ task mergeMappings(type: dev.gigaherz.mappingdownloader.MergeMappingsTask) {
 task checkMappings(type: dev.gigaherz.mappingdownloader.CheckMappingsTask) {
     dependsOn mergeMappings
     checkDir mergeMappings.destinationDir
+    joinedTsrg file("reference/mcpconfig/joined.tsrg")
+    inheritanceJson file("reference/mcpconfig/inheritance.json")
 }
 
 task makeSnapshot(type: Zip) {
