@@ -120,14 +120,11 @@ public class CheckMappingsTask extends DefaultTask
                 {
                     if (seen.contains(s.getValue()))
                     {
-                        LOGGER.error(String.format("Record contains a duplicate field name: %s -> %s", s.getKey(), s.getValue()));
-                        errors=true;
-                        continue;
+                        LOGGER.warn(String.format("Record contains a duplicate field name: %s -> %s", s.getKey(), s.getValue()));
                     }
                     if (checkParents(s.getKey(), s.getValue(), fieldToClass, inhSrg, srgToMapped))
                     {
-                        LOGGER.error(String.format("Record contains a field name potentially clashing with a parent class: %s -> %s", s.getKey(), s.getValue()));
-                        errors=true;
+                        LOGGER.warn(String.format("Record contains a field name potentially clashing with a parent class: %s -> %s", s.getKey(), s.getValue()));
                     }
                 }
                 /*seen.clear();
