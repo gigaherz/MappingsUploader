@@ -22,14 +22,37 @@ artifacts.add('mappingsExports', mappingsFile) {
     extension 'zip'
 }
 
-task downloadFile(type: Download) {
+def baseMappingsZip = file("$buildDir/tmp/basemappings-${project.baseMappings}.zip")
+def baseMappingsTarget = "reference/base_mappings"
+
+task downloadBaseMappings(type: Download) {
+	group ''
+	outputs.file baseMappingsZip
+	
+	src "https://www.dogforce-games.com/maven/de/oceanlabs/mcp/mcp_snapshot/${project.baseMappings}/mcp_snapshot-${project.baseMappings}.zip"
+	dest baseMappingsZip
+	onlyIfModified true
+}
+
+task extractBaseMappings(type: Copy) {
+	group 'setup'
+	outputs.file "$baseMappingsTarget/fields.csv"
+	outputs.file "$baseMappingsTarget/methods.csv"
+	outputs.file "$baseMappingsTarget/params.csv"
+	
+	dependsOn downloadBaseMappings
+	from zipTree(baseMappingsZip)
+	into baseMappingsTarget
+}
+
+task downloadSpreadsheet(type: Download) {
     src 'https://docs.google.com/spreadsheet/ccc?key=14knNUYjYkKkGpW9VTyjtlhaCTUsPWRJ91GLOFX2d23Q&output=csv'
     dest file("$buildDir/tmp/spreadsheet.csv")
 }
 
 task convertToCSV(type: dev.gigaherz.mappingdownloader.ConvertToCsvTask) {
-    dependsOn downloadFile
-    inputFile downloadFile.dest
+    dependsOn downloadSpreadsheet
+    inputFile downloadSpreadsheet.dest
     destinationDir file("$buildDir/tmp/downloaded_mappings/")
 }
 
