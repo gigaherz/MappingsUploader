@@ -27,8 +27,6 @@ public class ConvertToCsvTask extends DefaultTask
     public File destinationDir;
     public File inputFile;
 
-    public boolean checkDuplicates = false;
-
     public void inputFile(File file)
     {
         this.inputFile = file;
@@ -72,8 +70,6 @@ public class ConvertToCsvTask extends DefaultTask
 
         boolean anyErrors = false;
 
-        Multimap<String, String> classFieldCheck = ArrayListMultimap.create();
-        Multimap<String, String> classParamCheck = ArrayListMultimap.create();
         File fieldsFile = new File(destinationDir, "fields.csv");
         File methodsFile = new File(destinationDir, "methods.csv");
         File paramsFile = new File(destinationDir, "params.csv");
@@ -122,14 +118,6 @@ public class ConvertToCsvTask extends DefaultTask
                         if (srgName.startsWith("field_"))
                         {
                             fields.printRecord(srgName, mcpName, side, comment);
-
-                            if (checkDuplicates && classFieldCheck.containsEntry(className, mcpName))
-                            {
-                                LOGGER.error(String.format("A field already exists with the same name in this class: %s,%s,%s", srgName, mcpName, side));
-                                anyErrors = true;
-                                continue;
-                            }
-                            classFieldCheck.put(className, mcpName);
                         }
                     }
                 }
@@ -220,13 +208,6 @@ public class ConvertToCsvTask extends DefaultTask
                         if (srgName.startsWith("p_"))
                         {
                             params.printRecord(srgName, mcpName, side);
-                            if (checkDuplicates && classFieldCheck.containsEntry(className, mcpName))
-                            {
-                                LOGGER.error(String.format("A param exists with the same name as a field: %s,%s,%s", srgName,mcpName,side));
-                                anyErrors = true;
-                                continue;
-                            }
-                            classParamCheck.put(className, mcpName);
                         }
                     }
                 }

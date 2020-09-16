@@ -83,24 +83,33 @@ public class CheckMappingsTask extends DefaultTask
 
         InheritanceTree inhSrg = inhObf.remap(obfToSrg);
 
-        Map<String, String> methodToClass = new HashMap<>();
-        Map<String, String> fieldToClass = new HashMap<>();
+        Map<Integer, String> methodToClass = new HashMap<>();
+        Map<Integer, String> fieldToClass = new HashMap<>();
         for(InheritanceTree.InhClass classData : inhSrg.classes.values())
         {
             for (String s : classData.methods.keySet())
             {
-                methodToClass.put(s, classData.name);
+                if (Utils.isValidSrg(s))
+                {
+                    methodToClass.put(Utils.getId(s), classData.name);
+                }
             }
         }
         for(MappingData.TsrgClass classData : obfToSrg.classes.values())
         {
             for (String s : classData.fields.values())
             {
-                fieldToClass.put(s, classData.name);
+                if (Utils.isValidSrg(s))
+                {
+                    fieldToClass.put(Utils.getId(s), classData.name);
+                }
             }
             for (String s : classData.methods.values())
             {
-                methodToClass.put(s, classData.name);
+                if (Utils.isValidSrg(s))
+                {
+                    methodToClass.put(Utils.getId(s), classData.name);
+                }
             }
         }
 
@@ -108,31 +117,61 @@ public class CheckMappingsTask extends DefaultTask
 
         boolean errors = checkMappings("fields.csv", false, (srg, mcp) -> srgToMapped.mapField(fieldToClass, srg, mcp));
         errors = errors || checkMappings("methods.csv", false, (srg, mcp) -> srgToMapped.mapMethod(methodToClass, srg, mcp));
-        errors = errors || checkMappings("params.csv", true, (srg, mcp) -> srgToMapped.mapParam(srg, mcp));
 
+        Set<String> seenClasses = new HashSet<>();
+        Map<Map.Entry<String, String>, String> seenFieldClass = new HashMap<>();
         if (!errors)
         {
-            Set<String> seen = new HashSet<>();
             for(MappingData.TsrgClass classData : srgToMapped.classes.values())
             {
-                seen.clear();
+                String className = classData.name;
+                if (seenClasses.contains(className))
+                {
+                    LOGGER.error(String.format("Duplicate class found, must be a code error: %s", className));
+                    errors = true;
+                    continue;
+                }
+                seenClasses.add(className);
                 for (Map.Entry<String,String> s : classData.fields.entrySet())
                 {
-                    if (seen.contains(s.getValue()))
+                    String srg = s.getKey();
+                    String mcp = s.getValue();
+                    Map.Entry<String, String> m = Map.entry(className, mcp);
+                    String srg2 = seenFieldClass.get(m);
+                    if (srg2 != null)
                     {
-                        LOGGER.warn(String.format("Record contains a duplicate field name: %s -> %s", s.getKey(), s.getValue()));
+                        LOGGER.error(String.format("Record contains a duplicate field name: %s -> %s (in %s as %s)", srg, mcp, className, srg2));
+                        errors = true;
+                        continue;
                     }
-                    if (checkParents(s.getKey(), s.getValue(), fieldToClass, inhSrg, srgToMapped))
+                    String srg3 = checkParents(srg, mcp, fieldToClass, inhSrg, srgToMapped);
+                    if (srg3 != null)
                     {
-                        LOGGER.warn(String.format("Record contains a field name potentially clashing with a parent class: %s -> %s", s.getKey(), s.getValue()));
+                        LOGGER.warn(String.format("NOTICE: Record contains a field name potentially clashing with a parent class: %s -> %s", srg, mcp));
                     }
+                    seenFieldClass.put(m, srg);
                 }
-                /*seen.clear();
-                for (String s : classData.methods.values())
-                {
-                }*/
             }
         }
+
+        boolean[] err = new boolean[1];
+        errors = errors || checkMappings("params.csv", true, (srg, mcp) -> {
+            Utils.decodeParam(srg, (isConstructor, srgId, arg) -> {
+                if (!isConstructor) // TODO: Figure out a way to go from ctor param to class
+                {
+                    String cls = fieldToClass.get(srgId);
+                    if (cls == null)
+                        return;
+                    Map.Entry<String, String> m = Map.entry(cls, mcp);
+                    String c2 = seenFieldClass.get(m);
+                    if (c2 != null)
+                    {
+                        LOGGER.error(String.format("A param exists with the same name as a field: %s,%s (%s, %s)", srg,mcp, cls, c2));
+                        err[0] = true;
+                    }
+                }
+            });
+        }) || err[0];
 
         if (errors)
         {
@@ -140,13 +179,16 @@ public class CheckMappingsTask extends DefaultTask
         }
     }
 
-    private boolean checkParents(String srg, String mcp, Map<String, String> fieldToClass, InheritanceTree inhSrg, MappingData srgToMcp)
+    private String checkParents(String srg, String mcp, Map<Integer, String> fieldToClass, InheritanceTree inhSrg, MappingData srgToMcp)
     {
-        String cls = fieldToClass.get(srg);
+        if (!Utils.isValidSrg(srg)) // Unobfuscated names are not supported for this
+            return null;
+
+        String cls = fieldToClass.get(Utils.getId(srg));
         if (cls == null)
         {
             //LOGGER.warn(String.format("The field name does not appear to exist in the joined.tsrg. Is it from an old version? %s", srg));
-            return false;
+            return null;
         }
         InheritanceTree.InhClass c = inhSrg.classes.get(cls);
         while(c != null && c.superName != null)
@@ -157,12 +199,15 @@ public class CheckMappingsTask extends DefaultTask
             MappingData.TsrgClass c2 = srgToMcp.classes.get(c.name);
             if (c2 == null)
                 continue;
-            if (c2.fields.containsValue(mcp))
+            for(Map.Entry<String,String> fm : c2.fields.entrySet())
             {
-                return true;
+                if (fm.getValue().equals(mcp))
+                {
+                    return fm.getKey();
+                }
             }
         }
-        return false;
+        return null;
     }
 
     public boolean checkMappings(String name, boolean isParams, BiConsumer<String, String> addMapping) throws IOException

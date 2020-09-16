@@ -13,7 +13,7 @@ public class Utils
 
     static final Pattern LEGAL_NAME = Pattern.compile("^[a-zA-Z_][a-zA-Z_0-9]*$");
     private static final Pattern LEGAL_SRG = Pattern.compile("^(?:func|field|p)_(?:[a-zA-Z]*)([0-9]+)_(?:[a-zA-Z0-9_]*)$");
-    private static final Pattern PARAM_SRG = Pattern.compile("^p_(i?)([0-9]+)_([0-9]+)_$");
+    private static final Pattern PARAM_SRG = Pattern.compile("^p_(i?)([0-9]+)_([0-9]+)_?$");
 
     static boolean isNullOrEmpty(String s)
     {
@@ -52,6 +52,12 @@ public class Utils
         }
     }
 
+    public static boolean isValidSrg(String s)
+    {
+        Matcher m = LEGAL_SRG.matcher(s);
+        return m.matches();
+    }
+
     public static Integer getId(String s)
     {
         Matcher m = LEGAL_SRG.matcher(s);
@@ -69,5 +75,22 @@ public class Utils
         int id = Integer.parseInt(m.group(2));
         int arg = Integer.parseInt(m.group(3));
         return sign * ((id << 8) + arg);
+    }
+
+    public static void decodeParam(String s, TriConsumer<Boolean, Integer, Integer> logic)
+    {
+        Matcher m = PARAM_SRG.matcher(s);
+        if (!m.matches())
+            throw new IllegalStateException("Invalid SRG: " + s);
+        boolean isConstructor = !isNullOrEmpty(m.group(1));
+        int id = Integer.parseInt(m.group(2));
+        int arg = Integer.parseInt(m.group(3));
+        logic.accept(isConstructor, id, arg);
+    }
+
+    @FunctionalInterface
+    public interface TriConsumer<A,B,C>
+    {
+        public void accept(A a, B b, C c);
     }
 }

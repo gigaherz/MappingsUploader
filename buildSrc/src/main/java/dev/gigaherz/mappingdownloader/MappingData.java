@@ -27,7 +27,7 @@ public class MappingData
             }
             for (String s : classData.methods.values())
             {
-                newClass.fields.put(s, s);
+                newClass.methods.put(s, s);
             }
         }
     }
@@ -65,27 +65,22 @@ public class MappingData
         }
     }
 
-    public void mapField(Map<String, String> fieldToClass, String srg, String mcp)
+    public void mapField(Map<Integer, String> fieldToClass, String srg, String mcp)
     {
-        String cls = fieldToClass.get(srg);
+        String cls = fieldToClass.get(Utils.getId(srg));
         if (cls == null)
             return;
         TsrgClass clsData = classes.computeIfAbsent(cls, TsrgClass::new);
         clsData.fields.put(srg, mcp);
     }
 
-    public void mapMethod(Map<String, String> methodToClass, String srg, String mcp)
+    public void mapMethod(Map<Integer, String> methodToClass, String srg, String mcp)
     {
-        String cls = methodToClass.get(srg);
+        String cls = methodToClass.get(Utils.getId(srg));
         if (cls == null)
             return;
         TsrgClass clsData = classes.computeIfAbsent(cls, TsrgClass::new);
         clsData.methods.put(srg, mcp);
-    }
-
-    public void mapParam(String srg, String mcp)
-    {
-        // TODO
     }
 
     public class TsrgClass
