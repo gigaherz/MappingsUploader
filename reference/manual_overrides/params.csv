@@ -12,7 +12,6 @@ p_213071_1_,button2,2
 p_213072_2_,button2,2
 p_213701_3_,player2,2
 p_214994_0_,pathIn,2
-p_214995_0_,pathIn,2
 p_219160_1_,pos2,2
 p_219410_0_,chunkPos2,2
 p_219561_2_,resourceManager2,2
@@ -25,13 +24,12 @@ p_233798_1_,attribute2,2
 p_234863_0_,entity2,2
 p_234864_0_,entity2,2
 p_235938_1_,defaultIn,2
-p_237371_1_,dataPacksNBT,2
-p_237373_1_,worldSettingsNBT,2
 p_238471_1_,fontRenderer,2
 p_238472_1_,fontRenderer,2
 p_238475_1_,fontRenderer,2
 p_238476_1_,fontRenderer,2
 p_241466_2_,directionIn,2
+p_242180_0_,managerIn,2
 p_242955_3_,directionIn,2
 p_243223_1_,doubleIn,2
 p_243494_2_,pos2,2
