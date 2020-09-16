@@ -4,16 +4,17 @@ plugins {
 apply plugin: 'maven-publish'
 apply plugin: dev.gigaherz.customartifacts.CustomArtifactsPlugin
 
+def exportSnapshotType = project.hasProperty("exportSnapshotType") ? project.property("exportSnapshotType") : 'debug'
 def timestampFormat
 
-if (project.exportSnapshotType == 'debug') {
+if (exportSnapshotType == 'debug') {
 	timestampFormat = 'yyyyMMdd-HHmmss'
 }
-else if (project.exportSnapshotType == 'official') {
+else if (exportSnapshotType == 'release') {
 	timestampFormat = 'yyyyMMdd'
 }
 else {
-	throw InvalidUserDataException('snapshotType must be either "debug" or "official"')
+	throw InvalidUserDataException('exportSnapshotType must be either "debug" or "release"')
 }
 
 group 'de.oceanlabs.mcp'
@@ -105,7 +106,15 @@ publishing {
 
     repositories {
         maven {
-            url "$projectDir/../../CommonMaven"
+            if (project.hasProperty('forgeMavenPassword')) {
+                credentials {
+                    username project.properties.forgeMavenUser
+                    password project.properties.forgeMavenPassword
+                }
+                url 'https://files.minecraftforge.net/maven/manage/upload'
+            } else {
+                url "$projectDir/maven"
+            }
         }
     }
 }
