@@ -83,6 +83,9 @@ public class CheckMappingsTask extends DefaultTask
 
         InheritanceTree inhSrg = inhObf.remap(obfToSrg);
 
+        Set<String> srgMethods = new HashSet<>();
+        Set<String> srgFields = new HashSet<>();
+
         Map<Integer, String> methodToClass = new HashMap<>();
         Map<Integer, String> fieldToClass = new HashMap<>();
         for(InheritanceTree.InhClass classData : inhSrg.classes.values())
@@ -99,6 +102,7 @@ public class CheckMappingsTask extends DefaultTask
         {
             for (String s : classData.fields.values())
             {
+                srgFields.add(s);
                 if (Utils.isValidSrg(s))
                 {
                     fieldToClass.put(Utils.getId(s), classData.name);
@@ -106,6 +110,7 @@ public class CheckMappingsTask extends DefaultTask
             }
             for (String s : classData.methods.values())
             {
+                srgMethods.add(s);
                 if (Utils.isValidSrg(s))
                 {
                     methodToClass.put(Utils.getId(s), classData.name);
@@ -115,8 +120,8 @@ public class CheckMappingsTask extends DefaultTask
 
         MappingData srgToMapped = new MappingData(obfToSrg);
 
-        boolean errors = checkMappings("fields.csv", false, (srg, mcp) -> srgToMapped.mapField(fieldToClass, srg, mcp));
-        errors = errors || checkMappings("methods.csv", false, (srg, mcp) -> srgToMapped.mapMethod(methodToClass, srg, mcp));
+        boolean errors = checkMappings("fields.csv", false, srgFields, (srg, mcp) -> srgToMapped.mapField(fieldToClass, srg, mcp));
+        errors = errors || checkMappings("methods.csv", false, srgMethods, (srg, mcp) -> srgToMapped.mapMethod(methodToClass, srg, mcp));
 
         Set<String> seenClasses = new HashSet<>();
         Map<Map.Entry<String, String>, String> seenFieldClass = new HashMap<>();
@@ -155,7 +160,7 @@ public class CheckMappingsTask extends DefaultTask
         }
 
         boolean[] err = new boolean[1];
-        errors = errors || checkMappings("params.csv", true, (srg, mcp) -> {
+        errors = errors || checkMappings("params.csv", true, null, (srg, mcp) -> {
             Utils.decodeParam(srg, (isConstructor, srgId, arg) -> {
                 if (!isConstructor) // TODO: Figure out a way to go from ctor param to class
                 {
@@ -210,7 +215,7 @@ public class CheckMappingsTask extends DefaultTask
         return null;
     }
 
-    public boolean checkMappings(String name, boolean isParams, BiConsumer<String, String> addMapping) throws IOException
+    public boolean checkMappings(String name, boolean isParams, Set<String> known, BiConsumer<String, String> addMapping) throws IOException
     {
         boolean errors = false;
         File path = new File(checkDir, name);
@@ -230,6 +235,15 @@ public class CheckMappingsTask extends DefaultTask
                         LOGGER.error(String.format("Record contains a java keyword: %s -> %s", srgName, mcpName));
                         errors = true;
                         continue;
+                    }
+                    if (known != null)
+                    {
+                        if (!known.contains(srgName))
+                        {
+                            LOGGER.error(String.format("Record contains an unknown SRG name: %s -> %s", srgName, mcpName));
+                            errors = true;
+                            continue;
+                        }
                     }
                     if (isParams)
                     {

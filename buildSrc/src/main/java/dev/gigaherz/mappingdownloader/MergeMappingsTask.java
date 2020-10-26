@@ -139,8 +139,23 @@ public class MergeMappingsTask extends DefaultTask
     private void addToMap(Map<String, CSVRecord> recordMap, List<CSVRecord> list)
     {
         list.forEach(row -> {
-            if (!row.get(0).equals(row.get(1)))
+            if (Utils.isNullOrEmpty(row.get(1)))
+            {
+                recordMap.remove(row.get(0));
+            }
+            else if (!row.get(0).equals(row.get(1)))
+            {
+                String srg = row.get(0);
+                CSVRecord existing = recordMap.get(srg);
+                if (existing != null)
+                {
+                    if (existing.get(1).equals(row.get(1)))
+                    {
+                        LOGGER.warn(String.format("Pointless override: %s -> %s", row.get(0), row.get(1)));
+                    }
+                }
                 recordMap.put(row.get(0), row);
+            }
         });
     }
 }
