@@ -4,6 +4,8 @@ plugins {
 apply plugin: 'maven-publish'
 apply plugin: dev.gigaherz.customartifacts.CustomArtifactsPlugin
 
+def officialMappingOverlayMode = project.hasProperty("officialMappingOverlayMode") ? project.property("officialMappingOverlayMode").equals("true") : false
+
 def exportSnapshotType = project.hasProperty("exportSnapshotType") ? project.property("exportSnapshotType") : 'debug'
 def timestampFormat
 
@@ -17,8 +19,14 @@ else {
 	throw InvalidUserDataException('exportSnapshotType must be either "debug" or "release"')
 }
 
+def typeSuffix = ""
+if (officialMappingOverlayMode)
+{
+    typeSuffix = "-overlay"
+}
+
 group 'de.oceanlabs.mcp'
-version "${new Date().format(timestampFormat)}-${project.exportMinecraftVersion}"
+version "${new Date().format(timestampFormat)}-${project.exportMinecraftVersion}${typeSuffix}"
 
 System.out.println("mappings channel: 'snapshot', version: '${project.version}'")
 
@@ -72,6 +80,7 @@ task mergeMappings(type: dev.gigaherz.mappingdownloader.MergeMappingsTask) {
         dirs file("reference/manual_overrides")
     }
     destinationDir file("$buildDir/tmp/merged_mappings/")
+    setOfficialMappingOverlayMode(officialMappingOverlayMode)
 }
 
 task checkMappings(type: dev.gigaherz.mappingdownloader.CheckMappingsTask) {
@@ -82,7 +91,7 @@ task checkMappings(type: dev.gigaherz.mappingdownloader.CheckMappingsTask) {
 }
 
 task makeSnapshot(type: Zip) {
-    dependsOn mergeMappings, checkMappings
+    dependsOn checkMappings
     from mergeMappings.destinationDir
     include '*.csv'
     archiveName archiveFileName
@@ -91,6 +100,12 @@ task makeSnapshot(type: Zip) {
 
 task build {
     dependsOn makeSnapshot
+}
+
+task cleanMappings(type: Delete) {
+    delete downloadSpreadsheet.dest
+    delete convertToCSV.destinationDir
+    delete mergeMappings.destinationDir
 }
 
 tasks.publish.dependsOn makeSnapshot

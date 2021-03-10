@@ -23,6 +23,7 @@ public class MergeMappingsTask extends DefaultTask
 
     private File destinationDir;
     private List<File> sourceDirs = new ArrayList<>();
+    private boolean officialMappingOverlayMode = false;
 
     public void dirs(File... files)
     {
@@ -45,6 +46,13 @@ public class MergeMappingsTask extends DefaultTask
     }
     public File getDestinationDir() {
         return destinationDir;
+    }
+
+    public boolean getOfficialMappingOverlayMode() {
+        return officialMappingOverlayMode;
+    }
+    public void setOfficialMappingOverlayMode(boolean mode) {
+        officialMappingOverlayMode = mode;
     }
 
     @InputFiles
@@ -128,10 +136,20 @@ public class MergeMappingsTask extends DefaultTask
             List<CSVRecord> merged = recordMap.values().stream().sorted(Utils::compareById).collect(Collectors.toList());
             for (CSVRecord record : merged)
             {
-                if (isParam)
-                    fileOut.printRecord(record.get(0), record.get(1), record.get(2));
+                if (officialMappingOverlayMode) // only params and javadocs
+                {
+                    if (isParam)
+                        fileOut.printRecord(record.get(0), record.get(1), record.get(2));
+                    else if (!Utils.isNullOrEmpty(record.get(3)))
+                        fileOut.printRecord(record.get(0), record.get(0), record.get(2), record.get(3));
+                }
                 else
-                    fileOut.printRecord(record.get(0), record.get(1), record.get(2), record.get(3));
+                {
+                    if (isParam)
+                        fileOut.printRecord(record.get(0), record.get(1), record.get(2));
+                    else
+                        fileOut.printRecord(record.get(0), record.get(1), record.get(2), record.get(3));
+                }
             }
         }
     }
@@ -143,7 +161,7 @@ public class MergeMappingsTask extends DefaultTask
             {
                 recordMap.remove(row.get(0));
             }
-            else if (!row.get(0).equals(row.get(1)))
+            else if (!row.get(0).equals(row.get(1)) || (row.size() >= 4 && !Utils.isNullOrEmpty(row.get(3))))
             {
                 String srg = row.get(0);
                 CSVRecord existing = recordMap.get(srg);

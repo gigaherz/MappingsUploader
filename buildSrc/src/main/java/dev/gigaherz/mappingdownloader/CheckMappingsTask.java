@@ -217,17 +217,26 @@ public class CheckMappingsTask extends DefaultTask
 
     public boolean checkMappings(String name, boolean isParams, Set<String> known, BiConsumer<String, String> addMapping) throws IOException
     {
+        LOGGER.warn("Checking "+name+"...");
         boolean errors = false;
         File path = new File(checkDir, name);
         Multimap<Integer, String> paramNames = ArrayListMultimap.create();
         if (path.exists())
         {
+            long lastRow = 0;
             try (
                     CSVParser refIn = CSVParser.parse(path, StandardCharsets.UTF_8, Utils.CUSTOM_CSV_FORMAT);
             )
             {
                 for(CSVRecord r : refIn)
                 {
+                    lastRow = r.getRecordNumber();
+                    if (r.size() < 2)
+                    {
+                        LOGGER.error(String.format("Row %d is missing columns!", lastRow));
+                        errors = true;
+                        continue;
+                    }
                     String srgName = r.get(0);
                     String mcpName = r.get(1);
                     if (JAVA_KEYWORDS.contains(mcpName))
@@ -257,6 +266,11 @@ public class CheckMappingsTask extends DefaultTask
                     }
                     addMapping.accept(srgName,mcpName);
                 }
+            }
+            catch(Exception e)
+            {
+                LOGGER.error(String.format("Exception processing after %s:%d. %s", name, lastRow, e.toString()));
+                errors = true;
             }
         }
         return errors;
